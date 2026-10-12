@@ -235,6 +235,14 @@ class MediaItemRepository extends repository<MediaItemBase>({
                   )
                 );
 
+                // set the tmdbId to negative to ensure it doesn't clash with existing episodes in the database when updating
+                // this is necessary because the tmdbId is unique in the database and we might be updating an episode 
+                // with a new tmdbId that already exists in the database, but not for long, because that episode will be
+                // updated to the new tmdbId as well
+                if (episode.tmdbId) {
+                  newEpisode.tmdbId = -episode.tmdbId;
+                }
+
                 if (episode.id) {
                   const res = await trx<TvEpisode>('episode')
                     .update(newEpisode)
@@ -247,6 +255,14 @@ class MediaItemRepository extends repository<MediaItemBase>({
                     await trx('episode').insert(newEpisode).returning('id')
                   ).at(0).id;
                 }
+              }
+
+              // revert the tmdbId to positive for all episodes in this season, because they might have been set to 
+              // negative in the previous step
+              for (const episode of season.episodes) {
+                await trx<TvEpisode>('episode')
+                  .update({ id: episode.id, tmdbId: episode.tmdbId })
+                  .where({ id: episode.id });
               }
             }
           })
