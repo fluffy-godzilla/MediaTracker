@@ -1,0 +1,26 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+	"name": "Old as bones Node 20 used to build mediatracker",
+	"image": "node:20-alpine3.20",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [7481],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// allows easy manipluation of the mediatracker database from the host machine
+	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/mediatracker,target=/home/node/.mediatracker,type=bind,consistency=cached"
+	],
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "node"
+}

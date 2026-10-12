@@ -4,7 +4,8 @@
   "scripts": {
     "postinstall": "cd server && npm install && cd ../client && npm install",
     "build": "npm run build --prefix server && npm run build --prefix client",
-    "start": "npm run start --prefix server",
+    "build-server": "npm run build:server --prefix server",
+    "start": "HOSTNAME=0.0.0.0 npm run start --prefix server",
     "format": "prettier --list-different --write .",
     "lint": "npm run lint --prefix client && npm run lint --prefix server",
     "test": "npm run test --prefix server",
