@@ -4,15 +4,24 @@ on:
   release:
     types: [released, prereleased]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   release:
     name: Publish release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write    
     steps:
       - if: startsWith(${{ github.event.release.tag_name }}, "v")
         id: version
         run: echo "::set-output name=version::$(echo ${{ github.event.release.tag_name }} | cut -c2-)"
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
@@ -36,54 +45,41 @@ jobs:
           git tag --force ${{ github.event.release.tag_name }}
           git push
           git push --force --tags
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
-      - if: ${{ github.event.action == 'prereleased' }}
-        name: Publish on npmjs.com [prerelease]
-        run: |
-          npm ci
-          npm run build
-          cp README.md server/README.md
-          cd server
-          npm publish --tag unstable
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - if: ${{ github.event.action == 'released' }}
-        name: Publish on npmjs.com
-        run: |
-          npm ci
-          npm run build
-          cp README.md server/README.md
-          cd server
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
           image: tonistiigi/binfmt:qemu-v8.1.5
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
       - if: ${{ github.event.action == 'prereleased' }}
-        name: Publish to Docker Hub [prerelease]
+        name: Publish to GitHub [prerelease]
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: bonukai/mediatracker:${{ steps.version.outputs.version }},bonukai/mediatracker:unstable
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:unstable
       - if: ${{ github.event.action == 'released' }}
-        name: Publish to Docker Hub
+        name: Publish to GitHub
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: bonukai/mediatracker:${{ steps.version.outputs.version }},bonukai/mediatracker:unstable,bonukai/mediatracker:latest
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:unstable,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
